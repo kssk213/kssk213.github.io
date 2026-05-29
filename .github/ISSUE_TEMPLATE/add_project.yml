@@ -1,0 +1,34 @@
+name: 作品を追加する
+description: 新しい作品を追加するフォーム。送信すると自動で PR が作成されます。
+title: "Add project: {{title}}"
+labels: [add-project]
+body:
+  - type: input
+    id: id
+    attributes:
+      label: "ID（ユニーク）"
+      description: "例: scratch-3"
+      placeholder: "scratch-3"
+      required: true
+  - type: input
+    id: title
+    attributes:
+      label: "タイトル"
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: "プラットフォーム"
+      description: "例: Scratch, Unity"
+      placeholder: "Scratch"
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: "説明"
+      description: "短い説明を入力してください"
+  - type: input
+    id: link
+    attributes:
+      label: "外部リンク（任意）"
+      description: "例: https://scratch.mit.edu/projects/123456789/"

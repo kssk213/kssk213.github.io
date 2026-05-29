@@ -1,0 +1,99 @@
+name: Add project from Issue
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+
+jobs:
+  create-pr:
+    runs-on: ubuntu-latest
+    if: contains(join(github.event.issue.labels.*.name, ','), 'add-project')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Parse issue and add project
+        id: parse
+        env:
+          ISSUE_BODY: "${{ github.event.issue.body }}"
+        run: |
+          python - <<'PY'
+          import os, re, sys, subprocess
+
+          body = os.environ.get('ISSUE_BODY','')
+          # Normalize lines
+          lines = [l.rstrip() for l in body.splitlines()]
+
+          # parse simple key: value pairs and also handle headings followed by value
+          keys = ['id','title','platform','description','link']
+          fields = {k: '' for k in keys}
+          i = 0
+          current = None
+          while i < len(lines):
+            line = lines[i]
+            m = re.match(r"^\s*(?:-\s*)?(?:\*\*)?(id|title|platform|description|link)(?:\*\*)?\s*[:\-]\s*(.*)$", line, flags=re.I)
+            if m:
+              k = m.group(1).lower()
+              v = m.group(2).strip()
+              fields[k] = v
+              current = None
+              i += 1
+              continue
+            # heading style: 'ID' or '### ID' followed by value on next non-empty line
+            mh = re.match(r"^\s*(?:#+\s*)?(id|title|platform|description|link)\s*$", line, flags=re.I)
+            if mh:
+              k = mh.group(1).lower()
+              # collect following lines until blank or next key-like line
+              j = i+1
+              vals = []
+              while j < len(lines):
+                if re.match(r"^\s*$", lines[j]):
+                  j += 1
+                  continue
+                if re.match(r"^\s*(?:-\s*)?(?:\*\*)?(id|title|platform|description|link)(?:\*\*)?\s*[:\-]\s*", lines[j], flags=re.I):
+                  break
+                if re.match(r"^\s*(?:#+\s*)?(id|title|platform|description|link)\s*$", lines[j], flags=re.I):
+                  break
+                vals.append(lines[j])
+                j += 1
+              fields[k] = '\n'.join(vals).strip()
+              i = j
+              continue
+            i += 1
+
+          # minimal validation
+          if not fields['id'] or not fields['title']:
+            print('Missing required fields id or title', file=sys.stderr)
+            sys.exit(1)
+
+          # run add_project.py
+          cmd = [sys.executable, 'add_project.py', '--id', fields['id'], '--title', fields['title'], '--platform', fields.get('platform') or 'Scratch', '--description', fields.get('description') or '', '--link', fields.get('link') or '']
+          subprocess.check_call(cmd)
+
+          # set outputs
+          out = os.environ.get('GITHUB_OUTPUT')
+          if out:
+            with open(out,'a') as g:
+              g.write(f"id={fields['id']}\n")
+              g.write(f"title={fields['title']}\n")
+          else:
+            print(f"id={fields['id']}")
+            print(f"title={fields['title']}")
+          PY
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Add project: ${{ steps.parse.outputs.title }}"
+          branch: "add-project-${{ steps.parse.outputs.id }}-${{ github.run_id }}"
+          title: "Add project: ${{ steps.parse.outputs.title }}"
+          body: "This PR was created automatically from issue #${{ github.event.issue.number }}"
