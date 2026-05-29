@@ -1,0 +1,55 @@
+name: Add Project via Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      id:
+        description: 'ユニークなID（例: scratch-3）'
+        required: true
+        type: string
+      title:
+        description: '作品タイトル'
+        required: true
+        type: string
+      platform:
+        description: 'プラットフォーム（例: Scratch, Unity）'
+        required: true
+        type: string
+        default: 'Scratch'
+      description:
+        description: '短い説明'
+        required: false
+        type: string
+      link:
+        description: '外部リンク（任意）'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  add_project:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Run add_project script
+        run: |
+          python add_project.py --id "${{ github.event.inputs.id }}" --title "${{ github.event.inputs.title }}" --platform "${{ github.event.inputs.platform }}" --description "${{ github.event.inputs.description }}" --link "${{ github.event.inputs.link }}"
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add projects.json
+          git commit -m "Add project: ${{ github.event.inputs.title }}" || echo "No changes to commit"
+          git push

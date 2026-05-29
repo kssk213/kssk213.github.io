@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>作品 - kssk213</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background:#f8fafc; color:#111827; margin:0 }
+    .container { max-width:900px; margin:36px auto; padding:24px }
+    header { text-align:left; margin-bottom:18px }
+    h1 { margin:0 0 8px 0 }
+    .card { background:#fff; border-radius:16px; padding:20px; box-shadow:0 10px 30px rgba(15,23,42,0.06) }
+    .meta { color:#6b7280; margin-bottom:12px }
+    iframe.scratch { border:0; width:100%; max-width:485px; height:402px; display:block; margin:12px 0 }
+    a.button { display:inline-block; padding:8px 14px; background:#4338ca; color:#fff; border-radius:999px; text-decoration:none }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a href="projects.html" class="button">← 作品一覧へ戻る</a>
+    </header>
+
+    <div class="card" id="project-card">
+      <p id="loading">読み込み中...</p>
+    </div>
+  </div>
+
+  <script>
+    function getQueryParam(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+
+    async function loadProject() {
+      const id = getQueryParam('id');
+      const card = document.getElementById('project-card');
+      if (!id) {
+        card.innerHTML = '<p>作品IDが指定されていません。</p>';
+        return;
+      }
+      try {
+        const res = await fetch('projects.json', {cache:'no-store'});
+        if (!res.ok) throw new Error('projects.json を取得できません');
+        const projects = await res.json();
+        const p = projects.find(x => x.id === id);
+        if (!p) {
+          card.innerHTML = '<p>指定された作品が見つかりません。</p>';
+          return;
+        }
+
+        card.innerHTML = '';
+        const title = document.createElement('h1');
+        title.textContent = `${p.platform}: ${p.title}`;
+        const desc = document.createElement('p');
+        desc.className = 'meta';
+        desc.textContent = p.description || '';
+        card.appendChild(title);
+        card.appendChild(desc);
+
+        // Scratchの埋め込み: URL に /projects/<num>/ が含まれる場合
+        if (p.platform && p.platform.toLowerCase() === 'scratch' && p.link) {
+          const m = p.link.match(/projects\/(\d+)\/?/);
+          if (m) {
+            const pid = m[1];
+            const iframe = document.createElement('iframe');
+            iframe.className = 'scratch';
+            iframe.src = `https://scratch.mit.edu/projects/${pid}/embed`;
+            iframe.allowFullscreen = true;
+            card.appendChild(iframe);
+          }
+        }
+
+        // 外部リンク
+        if (p.link) {
+          const a = document.createElement('a');
+          a.href = p.link;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.className = 'button';
+          a.textContent = '外部で見る';
+          card.appendChild(a);
+        }
+
+      } catch (err) {
+        card.innerHTML = '<p>作品の読み込み中にエラーが発生しました。</p>';
+        console.error(err);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadProject);
+  </script>
+</body>
+</html>
