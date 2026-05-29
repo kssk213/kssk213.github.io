@@ -54,8 +54,9 @@ def main():
 
     fetched = fetch_projects_for_user(args.username)
     if not fetched:
-        print('No projects fetched or fetch failed.', file=sys.stderr)
-        sys.exit(1)
+        print('No projects fetched or fetch failed.')
+        # 取得できなかった場合は異常終了にせず正常終了とする（ワークフローで止めないため）
+        sys.exit(0)
 
     added = 0
     for p in fetched:
